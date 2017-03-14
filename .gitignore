@@ -1,0 +1,20 @@
+# History files
+*.DS_Store
+.Rhistory
+.Rapp.history
+.Rproj.user
+.Renviron
+
+# user generated output
+*.html
+*.pdf
+*.csv
+*.png
+*.pdf
+*.log
+*.Rout
+*.out
+*.aux
+*.sty
+*.csv
+*.tsv
