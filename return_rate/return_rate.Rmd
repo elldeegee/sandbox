@@ -1,0 +1,181 @@
+---
+title: "Return Rate Exploration"
+date: "`r format(Sys.time(), '%B %Y')`"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_knit$set(root.dir = normalizePath(".."))
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, tidy = TRUE, results = 'asis', fig.width = 12, fig.height = 8)
+```
+
+```{r Adding Packages and function}
+library(ggplot2)
+library(lubridate)
+suppressPackageStartupMessages(library(dplyr))
+library(tidyr)
+
+ReturnPeriod <- function(x) {
+  case_when(
+    x <= 30 ~ "first_thirty",
+    x > 30 & x <= 60 ~ "bet_30_60",
+    x > 60 & x <= 90 ~ "bet_60_90",
+    x > 90 ~ "post_90"
+  )
+}
+
+```
+
+```{r Loading Data}
+### Load csv
+WORKDIR <- paste0(getwd(),"/return_rate/")
+raw_file <- read.csv(paste0(WORKDIR,"return_rate.csv"))
+
+## Mutate table so workable in R
+tbl <- raw_file %>% 
+  mutate(dateordered = as.Date(dateordered,"%m/%d/%y"),
+         datereturned = as.Date(datereturned,"%m/%d/%y"))
+
+order_numbers <- tbl$orders
+
+orders_new <- rep(order_numbers,order_numbers)
+date_ordered <- rep(tbl$dateordered,order_numbers)
+date_returned <- rep(tbl$datereturned,order_numbers)
+order_status <- rep(tbl$orderstatus,order_numbers)
+
+orders <- data_frame(date_ordered,date_returned,order_status) %>% 
+  mutate(days_bet = as.numeric(date_returned-date_ordered),
+         months_bet = days_bet/30,
+         day_of_week_ordered = weekdays(date_ordered),
+         day_of_week_returned = weekdays(date_returned),
+         month_ordered = month(date_ordered, label= T, abbr = F),
+         month_returned = month(date_returned, label= T, abbr = F),
+         return_period = ReturnPeriod(days_bet),
+         verified_date = as.Date("2015-01-28"),
+         v_after_order = verified_date - date_ordered)
+
+```
+  
+
+**Things to Note:**  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1) Assumes data is for one product and that all orders and returns were by mail  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2) Assumes date returned refers to the day the company receives the return and not the day the customer ships it 
+
+***
+
+**Analysis:**   
+At first glance, it may appear that the return rate decreased month-over-month.
+
+
+```{r Orders By Month}
+orders_by_month <- orders %>% 
+  group_by(month_ordered,order_status) %>% 
+  summarize(n = n()) %>% 
+  spread(order_status,n) %>%
+  mutate(total_ordered = returned + complete,
+         per_returned = round(returned /total_ordered*100,2)) %>% ungroup()
+
+per_ret_chart <- ggplot(orders_by_month, aes(month_ordered, per_returned)) +
+  geom_bar(stat = "identity") + 
+  geom_text(aes(y = per_returned +.25, label = paste0(per_returned,"%")), stat = "identity") +
+  labs(title = "Percent of Orders Returned Prior to January 28, 2015, By Month Ordered",
+       x = "Month Ordered",
+       y = "Percent Returned") +
+  theme_bw()
+per_ret_chart
+```
+
+But, when we look at 30-day increments, one can see the opposite is the case: the return rate actually increased.
+
+```{r Cohort Returns By Month}
+cohort_returns_n <- orders %>% filter(!is.na(days_bet)) %>%
+  group_by(month_ordered, return_period) %>%
+  summarise(n_returned = n()) %>% spread(return_period,n_returned) %>%
+  complete(first_thirty, fill = list("bet_30_60" = 0, "bet_60_90" = 0, "post_90" = 0))
+
+cohort_returns_n <- left_join(orders_by_month,cohort_returns_n) %>% ungroup() %>%
+  mutate(per_30 = round(first_thirty/total_ordered*100,2),
+         per_30_60 = round(bet_30_60/total_ordered*100,2),
+         per_60_90 = round(bet_60_90/total_ordered*100,2),
+         per_post_90 = round(post_90/total_ordered*100,2),
+         per_first_60 = per_30 + per_30_60,
+         per_first_90 = per_first_60 + per_60_90) %>%
+  select(month_ordered, total_ordered,
+         `Returned within 30 days of ordering` = per_30,
+         `Returned within 60 days of ordering` = per_first_60) %>%
+  gather(period,per_returned, -month_ordered,-total_ordered)
+
+cohort_returns_n_chart <- ggplot(cohort_returns_n, aes(month_ordered, per_returned)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = paste0(per_returned,"%")), stat = "identity", nudge_y = .07) +
+  labs(title = "Percent of Orders Returned Within A Given Time Period, By Month Ordered",
+       x = "Month Ordered",
+       y = "% of Orders Returned") +
+  facet_wrap(~period, ncol = 2)
+cohort_returns_n_chart
+```
+
+Take orders that were returned within 30 days of being ordered. One can see that return rate increased ~18% month-over-month or ~89% over the five-month period.
+
+Another interesting thing about orders that were returned within 30 days is that the median days between ordered and returned has decreased.
+
+```{r 30 Day Cohort Median Days}
+
+cohort_orders_days_bet <- orders %>% filter(!is.na(days_bet)) %>%
+  group_by(month_ordered, return_period) %>%
+  summarise(med_days_between = median(days_bet)) %>% spread(return_period,med_days_between) %>%
+  select(month_ordered, first_thirty)
+
+cohort_orders_days_bet_chart <- ggplot(cohort_orders_days_bet, aes(month_ordered, first_thirty)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(first_thirty," days")), stat = "identity", nudge_y = 1) +
+  labs(title = "Median Number of Days Between Order & Return, By Month Ordered",
+       x = "Month Ordered",
+       y = "# of Days")
+cohort_orders_days_bet_chart
+
+```
+
+This makes me wonder if there are obvious flaws in the order that are causing a consumer to return it so quickly. Given the 165% increase in orders over the period, this could suggest that quality is being compromising for quantity. Another possibility is that there was a change in shipping providers and so orders are being received sooner and therefore consumers can return them sooner. Regardless of reason, the combination of return rates increasing and days between ordering and returning decreasing affects inventory needs (unless returned items are discarded).
+
+In looking at return rates, I also discovered that Mondays tend to have the highest volume of returns and Sundays the lowest and that orders placed on Wednesday have the highest chance of being returned (see charts below). 
+
+```{r Returns by DOW}
+returns_by_dow <- orders %>% filter(order_status != "complete") %>%
+  group_by(day_of_week_returned) %>% 
+  summarize(n = n()) %>% 
+  transform(., day_of_week_returned = factor(day_of_week_returned,c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")))
+
+returns_by_dow_chart <- ggplot(returns_by_dow, aes(day_of_week_returned, n)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), stat = "identity", nudge_y = .2) +
+  labs(title = "Returns, By Day of Week Returned",
+       x = "Day of Week Returned",
+       y = "# of Orders Returned")
+returns_by_dow_chart
+
+```
+
+```{r Orders made on Wednesdays}
+orders_by_dow <- orders %>% 
+  group_by(day_of_week_ordered,order_status) %>% 
+  summarize(n = n()) %>% 
+  spread(order_status,n) %>%
+  complete(day_of_week_ordered, fill = list(returned = 0)) %>% 
+  mutate(total_ordered = returned + complete,
+         per_returned = round(returned /total_ordered*100,0)) %>% 
+  transform(., day_of_week_ordered = factor(day_of_week_ordered,c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")))
+
+
+orders_by_dow_chart <- ggplot(orders_by_dow, aes(day_of_week_ordered, per_returned)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(per_returned,"%")), stat = "identity", nudge_y = .2) +
+  labs(title = "% of Returns, By Day of Week Ordered",
+       x = "Day of Week Ordered",
+       y = "% of Orders on a Given Day of Week that Were Returned")
+orders_by_dow_chart
+
+
+```
+
+Knowing that Mondays tend to have the highest volume of returns may impact staffing needs (depending on how returns are processed) and also ordering needs (to limit holding additional inventory if not needed). I believe at this point the fact that orders placed on Wednesdays have the highest chance of return is just a coincidence, especially given order volume isn’t at an extreme. 
