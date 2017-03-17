@@ -19,13 +19,6 @@ source(paste0(WORKDIR,src,"creating_tbls.R"))
 sign_ups <- sign_ups %>% rename(date = date_signed_up) %>% ungroup() %>% date.segments()
 purchases <- purchases %>% rename(date = date_purchased) %>% ungroup() %>% date.segments()
 
-## Cohort Analysis
-monthly_sign_ups <- sign_ups %>%
-  group_by(year_month, region) %>% summarise(n_sign_ups = n())
-
-cohort_purchases <- inner_join(monthly_sign_ups,
-                               cohort.purchases(purchases, t_period = "year_month"))
-
 ## MAP (Monthly Purchases) / YAP (Yearly Purchasers)
 stickiness <- purchases %>% group_by(year_month,region) %>% 
   mutate(u_purchasers = n_distinct(id)) %>%
@@ -38,7 +31,7 @@ stickiness <- purchases %>% group_by(year_month,region) %>%
          MAP = round(MAP, 2))
 
 stickiness_chart <- ggplot(stickiness,
-                     aes(x = year, y = `MAP/YAP`)) +
+                           aes(x = year, y = `MAP/YAP`)) +
   geom_bar(aes(fill = region),stat = "identity", position = "dodge") +
   labs(title = "Stickiness, By Region",
        x = "Year",

@@ -25,7 +25,7 @@ cohort.purchases <- function(df, t_period = "year_month") {
   cohort_purhchases <- inner_join(sign_ups %>% ungroup() %>% select_(.dots = ar_dots),
                                   df %>% ungroup() %>% select_(.dots = ar_dots)) %>%
     ungroup() %>% group_by_(.dots = gb_dots) %>%
-    summarise(cohort_purchases = n(), cohort_purchases = n_distinct(id))
+    summarise(purchasers_from_cohort = n_distinct(id), purchases_from_cohort = n())
   
   cohort_purhchases
 }
