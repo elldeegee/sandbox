@@ -31,14 +31,14 @@ cohort_purchases <- inner_join(yearly_sign_ups,
 cohort_purchases_chart <- ggplot(data = cohort_purchases,
                            mapping = aes(x = year, fill = region)) +
   geom_bar(aes(y = per_sign_purchase, group = region), stat = "identity", show.legend = FALSE) +
-  geom_line(aes(y = n_purchase_per_id*5, group = region), stat = "identity") +
-  geom_text(aes(y = per_sign_purchase + 3, label = per_sign_purchase, vjust = 0)) +
-  geom_text(aes(y = n_purchase_per_id*5+3, label = n_purchase_per_id, vjust = 0)) +
+  geom_point(aes(y = n_purchase_per_id*5, group = region), stat = "identity", show.legend = FALSE) +
+  geom_text(aes(y = per_sign_purchase + 2, label = paste0(per_sign_purchase,"%"), vjust = 0)) +
+  geom_text(aes(y = n_purchase_per_id*5+2, label = round(n_purchase_per_id,1), vjust = 0)) +
   scale_y_continuous("Percent of Sign Ups Who Purchase In The Same Year (%)",
                      breaks = c(0,25,50,75,100), 
                      labels = c(0,25,50,75,100),
                      sec.axis = sec_axis(~./5,
-                                         name = "Purchases Per Consumer")) +
+                                         name = "Number of Purchases Per Consumer")) +
   labs(title = "Cohort Activity, By Region",
        x = "Year") +
   labs(fill = NULL) +

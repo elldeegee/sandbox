@@ -1,4 +1,4 @@
-## load functions
+## date functions
 year.month <- function(x){
   mo <- lubridate::month(x)
   yr <- lubridate::year(x)
@@ -19,6 +19,7 @@ date.segments <- function(df){
   df
 }
 
+## analyses functions
 cohort.purchases <- function(df, t_period = "year_month") {
   gb_dots <- lapply(c("region",t_period), as.symbol)
   ar_dots <- lapply(c("region","id",t_period), as.symbol)
@@ -30,3 +31,16 @@ cohort.purchases <- function(df, t_period = "year_month") {
   cohort_purhchases
 }
 
+popular.flavor <- function(df, c_var = NULL) {
+  gb_dots <- lapply(c("flavor",c_var), as.symbol)
+  ar_dots <- lapply(c_var, as.symbol)
+  x <- df %>% group_by_(.dots = gb_dots) %>%
+    summarise(n_cones = n(),
+              scoops = sum(n_scoops), 
+              med_scoops = median(n_scoops),
+              avg_scoops = round(mean(n_scoops),1)) %>% 
+    ungroup() %>% group_by_(.dots = ar_dots) %>%
+    mutate(perc_scoop = round(100*scoops/sum(scoops),1),
+           perc_cone = round(100*n_cones/sum(n_cones),1))
+
+}

@@ -59,44 +59,21 @@ yearly_purchases <- ggplot(data = yearly_purchases,
   theme_bw()
 yearly_purchases
 
+## Purchases By Gender
+purchases_by_gender <- purchases %>%
+  group_by(gender) %>% 
+  summarise(Cones = n(), Scoops = sum(n_scoops), `Customers` = n_distinct(id)) %>% 
+  ungroup %>% gather(metric, value, -gender)
 
-## Most Popular Flavor & Average Scoops Per Cone
-purchases_by_flavor <- purchases %>% group_by(flavor) %>% 
-                       summarise(n_cones = n(),
-                                 scoops = sum(n_scoops), 
-                                 med_scoops = median(n_scoops),
-                                 avg_scoops = round(mean(n_scoops),1)) %>% 
-  ungroup() %>% 
-  mutate(perc_scoop = round(100*scoops/sum(scoops),1),
-         perc_cone = round(100*n_cones/sum(n_cones),1))
-
-## Most Popular Flavor
-flavor_scoop_cone <- purchases_by_flavor %>% 
-  select(flavor,perc_scoop,perc_cone) %>%
-  gather(metric, value, -flavor) %>% ungroup()
-
-flavor_scoop_cone_chart <- ggplot(flavor_scoop_cone, aes(x = metric, y = value, fill = flavor)) +
-  geom_bar(aes(group = flavor), stat = "identity", position = "dodge") +
-  geom_text(aes(y = value +1, label = paste0(round(value,0),"%")), stat = "identity", position = position_dodge(.9)) +
-  scale_y_continuous(breaks = seq(0,40, by = 5), labels = paste0(seq(0,40, by = 5),"%")) +
-  scale_x_discrete(labels = c("Cones Sold By Flavor","Scoops Sold By Flavor")) +
-  labs(title = "Most Popular Flavor",
-       y = "Percent of Total Sold",
+purchases_by_gender <- ggplot(data = purchases_by_gender,
+                           mapping = aes(x = metric, fill = gender)) +
+  geom_bar(aes(y = value, group = metric), stat = "identity", position = "fill") +
+  scale_y_continuous(breaks = seq(0,1,by=.25), 
+                     labels = paste0(seq(0,100,by=25),"%")) +
+  labs(title = "Purchases By Gender",
        x = NULL,
-       fill = NULL) +
-  theme_bw() +
-  theme(legend.position = "bottom", legend.direction = "horizontal")
-flavor_scoop_cone_chart
-
-## Total Scoops & Scoops Per Cone
-cumm_scoops_chart <- ggplot(purchases_by_flavor, aes(x = flavor)) +
-  geom_bar(aes(y = scoops), stat = "identity", fill = "#2980B9") +
-  geom_text(aes(y = scoops + 2500, label = paste0(comma(scoops),"
-scoops")), stat = "identity") +
-  geom_label(aes(y = 1300, label = paste0(avg_scoops," per cone")), stat = "identity", fill = "#F7FE0E")  +
-  scale_y_continuous(breaks = seq(0,50000, by = 10000), labels = comma(seq(0,50000, by = 10000))) +
-  labs(title = "Scoops, By Ice Cream Flavor",
-       x = "Flavor",
-       y = "Number of Scoops") +
+       y = "% of Purchases",
+       fill = "Gender") +
+  theme(plot.title = element_text(hjust = 0, vjust = 0)) +
   theme_bw()
-cumm_scoops_chart
+purchases_by_gender
