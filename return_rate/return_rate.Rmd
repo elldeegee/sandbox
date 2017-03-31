@@ -111,7 +111,8 @@ cohort_returns_n_chart <- ggplot(cohort_returns_n, aes(month_ordered, per_return
   labs(title = "Percent of Orders Returned Within A Given Time Period, By Month Ordered",
        x = "Month Ordered",
        y = "% of Orders Returned") +
-  facet_wrap(~period, ncol = 2)
+  facet_wrap(~period, ncol = 2) +
+  theme_bw()
 cohort_returns_n_chart
 ```
 
@@ -131,7 +132,8 @@ cohort_orders_days_bet_chart <- ggplot(cohort_orders_days_bet, aes(month_ordered
   geom_text(aes(label = paste0(first_thirty," days")), stat = "identity", nudge_y = 1) +
   labs(title = "Median Number of Days Between Order & Return, By Month Ordered",
        x = "Month Ordered",
-       y = "# of Days")
+       y = "# of Days") +
+  theme_bw()
 cohort_orders_days_bet_chart
 
 ```
@@ -151,7 +153,8 @@ returns_by_dow_chart <- ggplot(returns_by_dow, aes(day_of_week_returned, n)) +
   geom_text(aes(label = n), stat = "identity", nudge_y = .2) +
   labs(title = "Returns, By Day of Week Returned",
        x = "Day of Week Returned",
-       y = "# of Orders Returned")
+       y = "# of Orders Returned") +
+  theme_bw()
 returns_by_dow_chart
 
 ```
@@ -172,7 +175,8 @@ orders_by_dow_chart <- ggplot(orders_by_dow, aes(day_of_week_ordered, per_return
   geom_text(aes(label = paste0(per_returned,"%")), stat = "identity", nudge_y = .2) +
   labs(title = "% of Returns, By Day of Week Ordered",
        x = "Day of Week Ordered",
-       y = "% of Orders on a Given Day of Week that Were Returned")
+       y = "% of Orders on a Given Day of Week that Were Returned") +
+  theme_bw()
 orders_by_dow_chart
 
 
